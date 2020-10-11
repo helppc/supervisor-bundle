@@ -4,7 +4,7 @@ before_script:
   - php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
   - php composer-setup.php
   - php -r "unlink('composer-setup.php');"
-  - composer install
+  - php composer.phar install
 
 phpstan:php7.2:
   image: php:7.2
