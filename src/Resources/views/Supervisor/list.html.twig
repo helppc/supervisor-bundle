@@ -1,0 +1,9 @@
+{% extends "@Supervisor/layout.html.twig" %}
+
+{% block supervisor_content %}
+    <div class="page-header">
+        <h1>Supervisor</h1>
+    </div>
+    {% include "@Supervisor/Supervisor/list_content.html.twig" %}
+    {% include "@Supervisor/Supervisor/list_javascript.html.twig" %}
+{% endblock supervisor_content %}

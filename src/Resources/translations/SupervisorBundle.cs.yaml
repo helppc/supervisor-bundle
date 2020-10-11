@@ -1,0 +1,26 @@
+open.stdout: Zobrazit stdout
+open.stderr: Zobrazit stderr
+refresh: Občerstvit
+updating: Aktualizace
+logs.view: Zobrazit logy
+logs.delete: Smazat logy
+log.empty: Logy jsou prázdné
+loading: Načítání...
+stop.all: Zastavit vše
+start.all: Spustit vše
+start: Spustit
+stop: Zastavit
+version.api: Verze API
+version.supervisor: Verze Supervisor
+information: Zobrazit informace
+information.empty: Žádné informace nejsou dostupné
+server.up: Online
+server.down: Offline
+header.status: Stav
+header.process: Proces
+header.actions: Akce
+starting: Startování...
+stopping: Zastavování...
+process.stop.error: Proces nemůže být zastaven.
+process.start.error: Proces nemůže být nastartován.
+logs.delete.error: Logy se nepodařilo smazat.

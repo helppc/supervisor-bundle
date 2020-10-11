@@ -1,0 +1,47 @@
+{
+  "name": "helppc/supervisor-bundle",
+  "type": "symfony-bundle",
+  "homepage": "https://gitlab.com/helppc/supervisor-bundle",
+  "license": "MIT",
+  "description": "Manage your supervisor instance in your Symfony5 application.",
+  "keywords": [
+    "supervisor",
+    "supervisord",
+    "supervisorctl",
+    "rpc",
+    "api"
+  ],
+  "authors": [
+    {
+      "name": "Tomáš Kulhánek",
+      "email": "info@tirus.cz"
+    }
+  ],
+  "require": {
+    "php": "^7.2",
+    "supervisorphp/supervisor": "^4.0",
+    "symfony/framework-bundle": "^3.4.26|^4.4|^5.0",
+    "symfony/yaml": "^3.4|^4.4|^5.0",
+    "symfony/templating": "^3.4|^4.4|^5.0",
+    "psr/http-message": "^1.0",
+    "php-http/httplug": "^2.0",
+    "php-http/client-common": "^2.0",
+    "php-http/message-factory": "^1.0",
+    "php-http/discovery": "^1.0",
+    "symfony/http-foundation": "^5.1",
+    "symfony/translation": "^5.1"
+  },
+  "suggest": {
+    "php-http/httplug-bundle": "to provide required HTTP client with ease."
+  },
+  "autoload": {
+    "psr-4": {
+      "HelpPC\\Bundle\\SupervisorBundle\\": "src/"
+    }
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true,
+  "require-dev": {
+    "phpstan/phpstan": "^0.12.48"
+  }
+}
