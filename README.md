@@ -23,8 +23,6 @@ This package is currently in the active development.
     composer require helppc/supervisor-bundle nyholm/psr7
     ```
 
-    If your project is managed using [Symfony Flex](https://github.com/symfony/flex), the rest of the steps are not required. Just follow the post-installation instructions instead! :tada:
-
     > **NOTE:** This bundle requires a PSR 7/17 implementation to operate. We recommend that you use [nyholm/psr7](https://github.com/Nyholm/psr7). Check out this [document](docs/psr-implementation-switching.md) if you wish to use a different implementation.
 
 1. Create the bundle configuration file under `config/packages/supervisor.yaml`. Here is a reference configuration file:
