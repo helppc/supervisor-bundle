@@ -39,7 +39,7 @@
       "HelpPC\\Bundle\\SupervisorBundle\\": "src/"
     }
   },
-  "minimum-stability": "dev",
+  "minimum-stability": "stable",
   "prefer-stable": true,
   "require-dev": {
     "phpstan/phpstan": "^0.12.48"
