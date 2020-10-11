@@ -6,8 +6,8 @@ before_script:
   - php -r "unlink('composer-setup.php');"
   - php composer.phar install
 
-phpstan:php7.2:
-  image: php:7.2
+phpstan:php7.3:
+  image: php:7.3
   script:
     - vendor/bin/phpstan analyse -c phpstan.neon
 
