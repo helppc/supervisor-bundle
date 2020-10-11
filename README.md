@@ -25,7 +25,7 @@ This package is currently in the active development.
 
     > **NOTE:** This bundle requires a PSR 7/17 implementation to operate. We recommend that you use [nyholm/psr7](https://github.com/Nyholm/psr7). Check out this [document](docs/psr-implementation-switching.md) if you wish to use a different implementation.
 
-1. Create the bundle configuration file under `config/packages/supervisor.yaml`. Here is a reference configuration file:
+1. Create the bundle configuration file under `config/packages/helppc_supervisor.yaml`. Here is a reference configuration file:
 
     ```yaml
     supervisor:
@@ -44,7 +44,7 @@ This package is currently in the active development.
     HelpPC\Bundle\SupervisorBundle\SupervisorBundle::class => ['all' => true]
     ```
 
-1. Import the routes inside your `config/routes.yaml` file:
+1. Import the routes inside your `config/routes/helppc_supervisor.yaml` file:
 
     ```yaml
     supervisor:
