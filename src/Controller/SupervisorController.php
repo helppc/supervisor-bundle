@@ -201,26 +201,6 @@ class SupervisorController extends AbstractController
 
         $infos = $supervisor->getProcessInfo($this->getProcessIdentification($group, $name));
 
-        if ($request->isXmlHttpRequest()) {
-            $processInfo = [];
-            foreach (self::$publicInformatics as $public) {
-                $processInfo[$public] = $infos[$public];
-            }
-
-            return new JsonResponse([
-                'supervisor' => $key,
-                'processInfo' => $processInfo,
-                'controlLink' => $this->generateUrl('supervisor.process.startStop', [
-                    'key' => $key,
-                    'name' => $name,
-                    'group' => $group,
-                    'start' => ($infos['state'] == 10 || $infos['state'] == 20 ? '0' : '1'),
-                ]),
-            ],
-                JsonResponse::HTTP_OK,
-                ['Cache-Control' => 'no-store']
-            );
-        }
         return $this->render('@Supervisor/Supervisor/showInformations.html.twig', [
             'informations' => $infos,
         ]);
