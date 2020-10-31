@@ -20,18 +20,18 @@
   "require": {
     "php": "^7.4",
     "supervisorphp/supervisor": "^4.0",
-    "symfony/framework-bundle": "^5.0",
-    "symfony/yaml": "^5.0",
-    "symfony/templating": "^5.0",
+    "symfony/framework-bundle": "^5.0 || 4.4.*",
+    "symfony/yaml": "^5.0 || 4.4.*",
+    "symfony/templating": "^5.0 || 4.4.*",
     "psr/http-message": "^1.0",
     "php-http/httplug": "^2.0",
     "php-http/client-common": "^2.0",
     "php-http/message-factory": "^1.0",
     "php-http/discovery": "^1.0",
     "symfony/http-foundation": "^5.1",
-    "symfony/translation": "^5.1",
+    "symfony/translation": "^5.1 || 4.4.*",
     "nyholm/psr7": "^1.3",
-    "symfony/http-client": "5.1.*"
+    "symfony/http-client": "5.1.* || 4.4.*"
   },
   "suggest": {
     "php-http/httplug-bundle": "to provide required HTTP client with ease."

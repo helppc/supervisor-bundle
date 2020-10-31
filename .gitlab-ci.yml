@@ -4,9 +4,24 @@ before_script:
   - php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
   - php composer-setup.php
   - php -r "unlink('composer-setup.php');"
-  - php composer.phar install
 
 phpstan:php7.4:
   image: php:7.4
   script:
+    - php composer.phar install
     - vendor/bin/phpstan analyse -c phpstan.neon
+
+symfony44:php7.4:
+  image: php:7.4
+  script:
+    - php composer.phar create-project symfony/skeleton:^4.4 flex
+    - cd flex
+    - php ../composer.phar install
+
+
+symfony5:php7.4:
+  image: php:7.4
+  script:
+    - php composer.phar create-project symfony/skeleton:^5.0 flex
+    - cd flex
+    - php ../composer.phar install
