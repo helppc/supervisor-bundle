@@ -1,0 +1,22 @@
+{# Standalone fallback layout. Applications are expected to override this single
+   file (templates/bundles/SupervisorBundle/layout.html.twig) with one that
+   extends their own base layout and renders the `supervisor_content` block. #}
+<!DOCTYPE html>
+<html lang="{{ app.request.locale|default('en') }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block supervisor_title %}Supervisor{% endblock %}</title>
+    {% block supervisor_head %}{% endblock %}
+</head>
+<body>
+{% block supervisor_flashes %}
+    {% for label, messages in app.flashes %}
+        {% for message in messages %}
+            <p class="flash flash-{{ label }}">{{ message }}</p>
+        {% endfor %}
+    {% endfor %}
+{% endblock %}
+{% block supervisor_content %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,14 @@
+{% extends '@Supervisor/layout.html.twig' %}
+{% trans_default_domain 'SupervisorBundle' %}
+
+{% block supervisor_title %}{{ title }}{% endblock %}
+
+{% block supervisor_content %}
+    <h1>{{ title }}</h1>
+    <p><a href="{{ path('supervisor') }}">{{ 'back'|trans }}</a></p>
+    {% if log is empty %}
+        <p>{{ 'log.empty'|trans }}</p>
+    {% else %}
+        <pre class="supervisor-log">{{ log }}</pre>
+    {% endif %}
+{% endblock %}

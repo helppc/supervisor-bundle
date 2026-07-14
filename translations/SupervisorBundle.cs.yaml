@@ -1,0 +1,24 @@
+open.stdout: Zobrazit stdout
+open.stderr: Zobrazit stderr
+logs.view: Zobrazit log supervisoru
+log.empty: Log je prázdný
+start: Spustit
+stop: Zastavit
+restart: Restartovat
+version.api: Verze API
+version.supervisor: Verze Supervisoru
+information: Informace
+information.empty: Žádné informace nejsou dostupné
+server.up: Online
+server.down: Offline
+header.status: Stav
+header.process: Proces
+header.actions: Akce
+no.processes: Žádné procesy ke správě
+back: Zpět na přehled
+process.start.success: Proces byl spuštěn.
+process.start.error: Proces nemůže být nastartován.
+process.stop.success: Proces byl zastaven.
+process.stop.error: Proces nemůže být zastaven.
+process.restart.success: Proces byl restartován.
+process.restart.error: Proces se nepodařilo restartovat.

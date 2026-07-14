@@ -1,0 +1,24 @@
+open.stdout: Show stdout
+open.stderr: Show stderr
+logs.view: Show supervisord log
+log.empty: The log is empty
+start: Start
+stop: Stop
+restart: Restart
+version.api: API version
+version.supervisor: Supervisor version
+information: Information
+information.empty: No information available
+server.up: Online
+server.down: Offline
+header.status: Status
+header.process: Process
+header.actions: Actions
+no.processes: No processes to manage
+back: Back to overview
+process.start.success: The process has been started.
+process.start.error: The process could not be started.
+process.stop.success: The process has been stopped.
+process.stop.error: The process could not be stopped.
+process.restart.success: The process has been restarted.
+process.restart.error: The process could not be restarted.

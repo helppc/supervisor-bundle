@@ -2,26 +2,38 @@
 
 namespace HelpPC\Bundle\SupervisorBundle\DependencyInjection;
 
-use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Config\FileLocator;
-use Symfony\Component\HttpKernel\DependencyInjection\Extension;
-use Symfony\Component\DependencyInjection\Loader;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Extension\Extension;
+use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
 
 class SupervisorExtension extends Extension
 {
+    public function getAlias(): string
+    {
+        return 'helppc_supervisor';
+    }
+
     /**
      * @param mixed[] $configs
-     * @param ContainerBuilder $container
-     * @throws \Exception
      */
     public function load(array $configs, ContainerBuilder $container): void
     {
         $configuration = new Configuration();
         $config = $this->processConfiguration($configuration, $configs);
 
-        $container->setParameter('supervisor.servers', $config['servers'][$config['default_environment']]);
+        if (!isset($config['servers'][$config['default_environment']])) {
+            throw new InvalidConfigurationException(sprintf(
+                'helppc_supervisor.default_environment "%s" is not defined under helppc_supervisor.servers (available: "%s").',
+                $config['default_environment'],
+                implode('", "', array_keys($config['servers'])),
+            ));
+        }
 
-        $loader = new Loader\XmlFileLoader($container, new FileLocator(__DIR__ . '/../Resources/config'));
-        $loader->load('services.xml');
+        $container->setParameter('helppc_supervisor.servers', $config['servers'][$config['default_environment']]);
+
+        $loader = new PhpFileLoader($container, new FileLocator(\dirname(__DIR__, 2) . '/config'));
+        $loader->load('services.php');
     }
 }
