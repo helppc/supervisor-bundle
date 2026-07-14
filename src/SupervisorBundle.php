@@ -16,7 +16,12 @@ class SupervisorBundle extends Bundle
     public function getContainerExtension(): ?ExtensionInterface
     {
         // Explicit so the extension may use the "helppc_supervisor" alias
-        // instead of the auto-derived "supervisor".
-        return $this->extension ??= new SupervisorExtension();
+        // instead of the auto-derived "supervisor". (The parent property may
+        // hold `false` = "no extension", hence the instanceof check.)
+        if (!$this->extension instanceof ExtensionInterface) {
+            $this->extension = new SupervisorExtension();
+        }
+
+        return $this->extension;
     }
 }
