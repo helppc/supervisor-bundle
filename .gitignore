@@ -4,3 +4,5 @@ vendor
 .idea
 .php_cs.cache
 .phpunit.result.cache
+.phpunit.cache
+/config/reference.php

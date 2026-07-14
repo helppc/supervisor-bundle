@@ -1,0 +1,13 @@
+{% extends '@Supervisor/layout.html.twig' %}
+
+{% block supervisor_title %}{{ title }}{% endblock %}
+
+{% block supervisor_content %}
+    <h1>{{ title }}</h1>
+    <p><a href="{{ path('supervisor') }}">{{ 'back'|trans({}, 'SupervisorBundle') }}</a></p>
+    {% if log is empty %}
+        <p>{{ 'log.empty'|trans({}, 'SupervisorBundle') }}</p>
+    {% else %}
+        <pre class="supervisor-log">{{ log }}</pre>
+    {% endif %}
+{% endblock %}

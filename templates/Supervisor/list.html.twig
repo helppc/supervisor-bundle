@@ -1,0 +1,78 @@
+{% extends '@Supervisor/layout.html.twig' %}
+
+{# Translations use an explicit domain instead of `{% trans_default_domain %}` —
+   the tag's token parser is broken with symfony/twig-bridge < 6.4.17 combined
+   with twig/twig >= 3.15 ("EmptyNode cannot have children"). #}
+
+{% block supervisor_content %}
+    <h1>Supervisor</h1>
+
+    {% for serverKey, server in servers %}
+        <section class="supervisor-server">
+            <h2>
+                {{ serverKey }}
+                <span class="supervisor-status supervisor-status-{{ server.connected ? 'up' : 'down' }}">
+                    {{ (server.connected ? 'server.up' : 'server.down')|trans({}, 'SupervisorBundle') }}
+                </span>
+            </h2>
+
+            {% if server.connected %}
+                {% if server.processes is empty %}
+                    <p>{{ 'no.processes'|trans({}, 'SupervisorBundle') }}</p>
+                {% else %}
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>{{ 'header.status'|trans({}, 'SupervisorBundle') }}</th>
+                                <th>{{ 'header.process'|trans({}, 'SupervisorBundle') }}</th>
+                                <th>{{ 'header.actions'|trans({}, 'SupervisorBundle') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for process in server.processes %}
+                            {% set info = process.payload %}
+                            {% set routeParams = { key: serverKey, group: info.group, name: info.name } %}
+                            {% set running = info.state in [10, 20] %}
+                            <tr>
+                                <td>
+                                    <span class="supervisor-status supervisor-status-{{ running ? 'up' : 'down' }}">{{ info.statename }}</span>
+                                </td>
+                                <td>
+                                    <strong>{{ info.name }}</strong>
+                                    {% if info.group != info.name %}<small>({{ info.group }})</small>{% endif %}
+                                    <br>
+                                    <small>{{ info.description }}</small>
+                                </td>
+                                <td>
+                                    {% if running %}
+                                        <form method="post" action="{{ path('supervisor.process.stop', routeParams) }}">
+                                            <button type="submit">{{ 'stop'|trans({}, 'SupervisorBundle') }}</button>
+                                        </form>
+                                        <form method="post" action="{{ path('supervisor.process.restart', routeParams) }}">
+                                            <button type="submit">{{ 'restart'|trans({}, 'SupervisorBundle') }}</button>
+                                        </form>
+                                    {% else %}
+                                        <form method="post" action="{{ path('supervisor.process.start', routeParams) }}">
+                                            <button type="submit">{{ 'start'|trans({}, 'SupervisorBundle') }}</button>
+                                        </form>
+                                    {% endif %}
+                                    <a href="{{ path('supervisor.process.info', routeParams) }}">{{ 'information'|trans({}, 'SupervisorBundle') }}</a>
+                                    <a href="{{ path('supervisor.process.log', routeParams) }}">{{ 'open.stdout'|trans({}, 'SupervisorBundle') }}</a>
+                                    <a href="{{ path('supervisor.process.error', routeParams) }}">{{ 'open.stderr'|trans({}, 'SupervisorBundle') }}</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                    <p>
+                        <small>
+                            {{ 'version.supervisor'|trans({}, 'SupervisorBundle') }} <code>{{ server.supervisorVersion }}</code>,
+                            {{ 'version.api'|trans({}, 'SupervisorBundle') }} <code>{{ server.apiVersion }}</code>
+                            — <a href="{{ path('supervisor.log', { key: serverKey }) }}">{{ 'logs.view'|trans({}, 'SupervisorBundle') }}</a>
+                        </small>
+                    </p>
+                {% endif %}
+            {% endif %}
+        </section>
+    {% endfor %}
+{% endblock %}

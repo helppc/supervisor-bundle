@@ -3,271 +3,194 @@
 namespace HelpPC\Bundle\SupervisorBundle\Controller;
 
 use HelpPC\Bundle\SupervisorBundle\Manager\SupervisorManager;
+use Supervisor\Exception\SupervisorException;
+use Supervisor\Supervisor;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-/**
- * SupervisorController
- */
 class SupervisorController extends AbstractController
 {
-    /** @var string[] */
-    private static array $publicInformatics = ['description', 'group', 'name', 'state', 'statename'];
-
-    private SupervisorManager $supervisorManager;
-    private TranslatorInterface $translator;
-
-    public function __construct(SupervisorManager $supervisorManager, TranslatorInterface $translator)
-    {
-        $this->supervisorManager = $supervisorManager;
-        $this->translator = $translator;
+    public function __construct(
+        private readonly SupervisorManager $supervisorManager,
+        private readonly TranslatorInterface $translator,
+    ) {
     }
 
-    public function indexAction(): Response
+    public function index(): Response
     {
-        return $this->render('@Supervisor/Supervisor/list.html.twig', [
-            'supervisors' => $this->supervisorManager->getSupervisors(),
-        ]);
-    }
+        $servers = [];
+        foreach ($this->supervisorManager->getSupervisors() as $key => $supervisor) {
+            $connected = $supervisor->isConnected();
 
-    public function startStopProcessAction(bool $start, string $key, string $name, string $group, Request $request): Response
-    {
-        $success = false;
-        $supervisor = $this->supervisorManager
-            ->getSupervisorByKey($key);
-
-        $flashes = [];
-        try {
-            if ($start === true) {
-                $success = $supervisor->startProcess($this->getProcessIdentification($group, $name));
-            } elseif ($start === false) {
-                $success = $supervisor->stopProcess($this->getProcessIdentification($group, $name));
-            }
-
-        } catch (\Exception $e) {
-            $success = false;
-            $flashes[] = $this->translator->trans('process.stop.error', [], 'SupervisorBundle');
-        }
-
-        if (!$success) {
-            $flashes[] = $this->translator->trans(
-                ($start === true ? 'process.start.error' : 'process.stop.error'),
-                [],
-                'SupervisorBundle'
-            );
-        }
-
-        if ($request->isXmlHttpRequest()) {
-            $processInfo = $supervisor->getProcessInfo($this->getProcessIdentification($group, $name));
-
-            return new JsonResponse([
-                'success' => $success,
-                'message' => implode(', ', $flashes ?? []),
-                'processInfo' => $processInfo,
-            ],
-                JsonResponse::HTTP_OK,
-                ['Cache-Control' => 'no-store']
-            );
-        }
-        foreach ($flashes as $messages) {
-            $this->addFlash('error', $messages);
-        }
-
-        return $this->redirect($this->generateUrl('supervisor'));
-    }
-
-    public function startStopAllProcessesAction(Request $request, bool $start, string $key): Response
-    {
-        $processesInfo = true;
-        if ($start === true) {
-            $processesInfo = $this->supervisorManager
-                ->getSupervisorByKey($key)
-                ->startAllProcesses(false);
-        } elseif ($start === false) {
-            $processesInfo = $this->supervisorManager
-                ->getSupervisorByKey($key)
-                ->stopAllProcesses(false);
-        }
-
-        if ($request->isXmlHttpRequest()) {
-            return new JsonResponse([
-                'processesInfo' => $processesInfo,
-            ],
-                JsonResponse::HTTP_OK,
-                ['Cache-Control' => 'no-store']
-            );
-        }
-
-        return $this->redirect($this->generateUrl('supervisor'));
-    }
-
-    public function showSupervisorLogAction(string $key): Response
-    {
-        $supervisor = $this->supervisorManager
-            ->getSupervisorByKey($key);
-
-        if (!$supervisor) {
-            throw new \Exception('Supervisor not found');
-        }
-
-        $logs = $supervisor->readLog(0, 0);
-
-        return $this->render('@Supervisor/Supervisor/showLog.html.twig', [
-            'log' => $logs,
-        ]);
-    }
-
-    public function clearSupervisorLogAction(string $key): Response
-    {
-        $supervisor = $this->supervisorManager
-            ->getSupervisorByKey($key);
-
-        if (!$supervisor) {
-            throw new \Exception('Supervisor not found');
-        }
-
-        if ($supervisor->clearLog() !== true) {
-            $this->addFlash(
-                'error',
-                $this->translator->trans('logs.delete.error', [], 'SupervisorBundle')
-            );
-        }
-
-        return $this->redirect($this->generateUrl('supervisor'));
-    }
-
-    public function showProcessLogAction(string $key, string $name, string $group): Response
-    {
-        $supervisor = $this->supervisorManager
-            ->getSupervisorByKey($key);
-
-        if (!$supervisor) {
-            throw new \Exception('Supervisor not found');
-        }
-
-        $result = $supervisor->tailProcessStdoutLog($this->getProcessIdentification($group, $name), 0, 1);
-        $stdout = $supervisor->tailProcessStdoutLog($this->getProcessIdentification($group, $name), 0, (int) $result[1]);
-
-        return $this->render('@Supervisor/Supervisor/showLog.html.twig', [
-            'log' => $stdout[0],
-        ]);
-    }
-
-    public function showProcessLogErrAction(string $key, string $name, string $group): Response
-    {
-        $supervisor = $this->supervisorManager->getSupervisorByKey($key);
-
-        if (!$supervisor) {
-            throw new \Exception('Supervisor not found');
-        }
-
-        $result = $supervisor->tailProcessStderrLog($this->getProcessIdentification($group, $name), 0, 1);
-        $stderr = $supervisor->tailProcessStderrLog($this->getProcessIdentification($group, $name), 0, (int) $result[1]);
-
-        return $this->render('@Supervisor/Supervisor/showLog.html.twig', [
-            'log' => $stderr[0],
-        ]);
-    }
-
-
-    public function clearProcessLogAction(string $key, string $name, string $group): Response
-    {
-        $supervisor = $this->supervisorManager->getSupervisorByKey($key);
-
-        if (!$supervisor) {
-            throw new \Exception('Supervisor not found');
-        }
-
-        if ($supervisor->clearProcessLogs($this->getProcessIdentification($group, $name)) !== true) {
-            $this->addFlash(
-                'error',
-                $this->translator->trans('logs.delete.error', [], 'SupervisorBundle')
-            );
-        }
-
-        return $this->redirect($this->generateUrl('supervisor'));
-    }
-
-    public function showProcessInfoAction(string $key, string $name, string $group, Request $request): Response
-    {
-        $supervisor = $this->supervisorManager->getSupervisorByKey($key);
-
-        if (!$supervisor) {
-            throw new \Exception('Supervisor not found');
-        }
-
-        $infos = $supervisor->getProcessInfo($this->getProcessIdentification($group, $name));
-
-        if ($request->isXmlHttpRequest()) {
-            $processInfo = [];
-            foreach (self::$publicInformatics as $public) {
-                $processInfo[$public] = $infos[$public];
-            }
-
-            return new JsonResponse([
-                'supervisor' => $key,
-                'processInfo' => $processInfo,
-                'controlLink' => $this->generateUrl('supervisor.process.startStop', [
-                    'key' => $key,
-                    'name' => $name,
-                    'group' => $group,
-                    'start' => ($infos['state'] == 10 || $infos['state'] == 20 ? '0' : '1'),
-                ]),
-            ],
-                JsonResponse::HTTP_OK,
-                ['Cache-Control' => 'no-store']
-            );
-        }
-        return $this->render('@Supervisor/Supervisor/showInformations.html.twig', [
-            'informations' => $infos,
-        ]);
-    }
-
-    public function showProcessInfoAllAction(string $key, Request $request): Response
-    {
-        if (!$request->isXmlHttpRequest()) {
-            throw new \Exception('Ajax request expected here');
-        }
-
-        $supervisor = $this->supervisorManager->getSupervisorByKey($key);
-
-        if (!$supervisor) {
-            throw new \Exception('Supervisor not found');
-        }
-
-        $processes = $supervisor->getAllProcesses();
-
-        $processesInfo = [];
-        foreach ($processes as $process) {
-            $infos = $supervisor->getProcessInfo($this->getProcessIdentification($process->getPayload()['group'], $process->getName()));
-            $processInfo = [];
-            foreach (self::$publicInformatics as $public) {
-                $processInfo[$public] = $infos[$public];
-            }
-
-            $processesInfo[$infos['name']] = [
-                'supervisor' => $key,
-                'processInfo' => $processInfo,
-                'controlLink' => $this->generateUrl('supervisor.process.startStop', [
-                    'key' => $key,
-                    'name' => $infos['name'],
-                    'group' => $infos['group'],
-                    'start' => ($infos['state'] == 10 || $infos['state'] == 20 ? '0' : '1'),
-                ]),
+            $server = [
+                'connected' => $connected,
+                'processes' => [],
+                'supervisorVersion' => null,
+                'apiVersion' => null,
             ];
+
+            if ($connected) {
+                try {
+                    $server['processes'] = $this->supervisorManager->getVisibleProcesses($key);
+                    $server['supervisorVersion'] = $supervisor->getSupervisorVersion();
+                    $server['apiVersion'] = $supervisor->getAPIVersion();
+                } catch (\Exception) {
+                    $server['connected'] = false;
+                }
+            }
+
+            $servers[$key] = $server;
         }
 
-        return new JsonResponse($processesInfo,
-            JsonResponse::HTTP_OK,
-            ['Cache-Control' => 'no-store']
-        );
+        return $this->render('@Supervisor/Supervisor/list.html.twig', [
+            'servers' => $servers,
+        ]);
+    }
+
+    public function startProcess(string $key, string $group, string $name): Response
+    {
+        $supervisor = $this->getSupervisorForVisibleProcess($key, $group, $name);
+
+        try {
+            $success = $supervisor->startProcess($this->getProcessIdentification($group, $name), true) === true;
+        } catch (\Exception) {
+            $success = false;
+        }
+        $this->flashResult($success, 'process.start');
+
+        return $this->redirectToRoute('supervisor');
+    }
+
+    public function stopProcess(string $key, string $group, string $name): Response
+    {
+        $supervisor = $this->getSupervisorForVisibleProcess($key, $group, $name);
+
+        try {
+            $success = $supervisor->stopProcess($this->getProcessIdentification($group, $name), true) === true;
+        } catch (\Exception) {
+            $success = false;
+        }
+        $this->flashResult($success, 'process.stop');
+
+        return $this->redirectToRoute('supervisor');
+    }
+
+    public function restartProcess(string $key, string $group, string $name): Response
+    {
+        $supervisor = $this->getSupervisorForVisibleProcess($key, $group, $name);
+        $identification = $this->getProcessIdentification($group, $name);
+
+        try {
+            try {
+                $supervisor->stopProcess($identification, true);
+            } catch (SupervisorException) {
+                // Not running (stopped/exited/fatal) — restart degrades to a plain start.
+            }
+            $success = $supervisor->startProcess($identification, true) === true;
+        } catch (\Exception) {
+            $success = false;
+        }
+        $this->flashResult($success, 'process.restart');
+
+        return $this->redirectToRoute('supervisor');
+    }
+
+    public function showProcessLog(string $key, string $group, string $name): Response
+    {
+        return $this->renderProcessLogTail($key, $group, $name, stderr: false);
+    }
+
+    public function showProcessLogErr(string $key, string $group, string $name): Response
+    {
+        return $this->renderProcessLogTail($key, $group, $name, stderr: true);
+    }
+
+    public function showSupervisorLog(string $key): Response
+    {
+        $supervisor = $this->getSupervisor($key);
+
+        try {
+            $log = (string) $supervisor->readLog(-$this->supervisorManager->getLogTailBytes($key), 0);
+        } catch (\Exception) {
+            $log = '';
+        }
+
+        return $this->render('@Supervisor/Supervisor/showLog.html.twig', [
+            'title' => sprintf('supervisord (%s)', $key),
+            'log' => $log,
+        ]);
+    }
+
+    public function showProcessInfo(string $key, string $group, string $name): Response
+    {
+        $supervisor = $this->getSupervisorForVisibleProcess($key, $group, $name);
+
+        try {
+            $informations = $supervisor->getProcessInfo($this->getProcessIdentification($group, $name));
+        } catch (\Exception) {
+            $informations = [];
+        }
+
+        return $this->render('@Supervisor/Supervisor/showInformations.html.twig', [
+            'title' => $this->getProcessIdentification($group, $name),
+            'informations' => $informations,
+        ]);
+    }
+
+    private function renderProcessLogTail(string $key, string $group, string $name, bool $stderr): Response
+    {
+        $supervisor = $this->getSupervisorForVisibleProcess($key, $group, $name);
+        $identification = $this->getProcessIdentification($group, $name);
+        $bytes = $this->supervisorManager->getLogTailBytes($key);
+
+        try {
+            $result = $stderr
+                ? $supervisor->tailProcessStderrLog($identification, 0, $bytes)
+                : $supervisor->tailProcessStdoutLog($identification, 0, $bytes);
+            $log = (string) ($result[0] ?? '');
+        } catch (\Exception) {
+            $log = '';
+        }
+
+        return $this->render('@Supervisor/Supervisor/showLog.html.twig', [
+            'title' => sprintf('%s — %s', $identification, $stderr ? 'stderr' : 'stdout'),
+            'log' => $log,
+        ]);
+    }
+
+    private function getSupervisor(string $key): Supervisor
+    {
+        return $this->supervisorManager->getSupervisorByKey($key)
+            ?? throw $this->createNotFoundException(sprintf('Unknown supervisor server "%s".', $key));
+    }
+
+    /**
+     * Resolves the supervisor while enforcing the hidden_processes deny-list.
+     * Hidden processes 404 here, before any RPC call — they are not just
+     * hidden in the UI, they cannot be targeted at all.
+     */
+    private function getSupervisorForVisibleProcess(string $key, string $group, string $name): Supervisor
+    {
+        $supervisor = $this->getSupervisor($key);
+
+        if (!$this->supervisorManager->isProcessVisible($key, $group, $name)) {
+            throw $this->createNotFoundException(sprintf('Process "%s:%s" not found.', $group, $name));
+        }
+
+        return $supervisor;
     }
 
     private function getProcessIdentification(string $group, string $name): string
     {
         return sprintf('%s:%s', $group, $name);
+    }
+
+    private function flashResult(bool $success, string $translationPrefix): void
+    {
+        $this->addFlash(
+            $success ? 'success' : 'error',
+            $this->translator->trans($translationPrefix . ($success ? '.success' : '.error'), [], 'SupervisorBundle'),
+        );
     }
 }

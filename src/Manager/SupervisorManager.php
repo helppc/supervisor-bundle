@@ -2,61 +2,114 @@
 
 namespace HelpPC\Bundle\SupervisorBundle\Manager;
 
-use Http\Client\HttpClient;
-use Http\Message\MessageFactory;
+use fXmlRpc\Client;
+use fXmlRpc\Transport\PsrTransport;
+use HelpPC\Bundle\SupervisorBundle\Http\BasicAuthClient;
+use Psr\Http\Client\ClientInterface;
+use Psr\Http\Message\RequestFactoryInterface;
+use Supervisor\ProcessInterface;
 use Supervisor\Supervisor;
 
 class SupervisorManager
 {
-    /**
-     * @var array<string,Supervisor>|Supervisor[]
-     */
+    private const DEFAULT_LOG_TAIL_BYTES = 16384;
+
+    /** @var array<string, Supervisor> */
     private array $supervisors = [];
 
+    /** @var array<string, list<string>> */
+    private array $hiddenProcesses = [];
+
+    /** @var array<string, int> */
+    private array $logTailBytes = [];
+
     /**
-     * SupervisorManager constructor.
-     * @param mixed[] $supervisorsConfiguration
-     * @param HttpClient $httpClient
-     * @param MessageFactory $factory
+     * @param array<string, array{scheme?: string, host: string, port?: int|string, username?: string|null, password?: string|null, hidden_processes?: array<string>, log_tail_bytes?: int}> $supervisorsConfiguration
      */
-    public function __construct(array $supervisorsConfiguration, HttpClient $httpClient, MessageFactory $factory)
-    {
+    public function __construct(
+        array $supervisorsConfiguration,
+        ClientInterface $httpClient,
+        RequestFactoryInterface $requestFactory,
+    ) {
         foreach ($supervisorsConfiguration as $serverName => $configuration) {
-            $client = new \fXmlRpc\Client(
-                sprintf('%s://%s:%d/RPC2', $configuration['scheme'], $configuration['host'], $configuration['port']),
-                new \fXmlRpc\Transport\HttpAdapterTransport(
-                    $factory,
-                    $httpClient
-                )
+            $serverName = (string) $serverName;
+
+            $client = $httpClient;
+            $username = $configuration['username'] ?? null;
+            $password = $configuration['password'] ?? null;
+            if ($username !== null && $username !== '' && $password !== null) {
+                $client = new BasicAuthClient($client, $username, $password);
+            }
+
+            $rpcClient = new Client(
+                sprintf(
+                    '%s://%s:%d/RPC2',
+                    $configuration['scheme'] ?? 'http',
+                    $configuration['host'],
+                    (int) ($configuration['port'] ?? 9001),
+                ),
+                new PsrTransport($requestFactory, $client),
             );
-            $supervisor = new Supervisor($client);
-            $this->supervisors[$serverName] = $supervisor;
+
+            $this->supervisors[$serverName] = new Supervisor($rpcClient);
+            $this->hiddenProcesses[$serverName] = array_values(array_map(strval(...), $configuration['hidden_processes'] ?? []));
+            $this->logTailBytes[$serverName] = (int) ($configuration['log_tail_bytes'] ?? self::DEFAULT_LOG_TAIL_BYTES);
         }
     }
 
     /**
-     * Get all supervisors
-     *
-     * @return Supervisor[]
+     * @return array<string, Supervisor>
      */
-    public function getSupervisors()
+    public function getSupervisors(): array
     {
         return $this->supervisors;
     }
 
-    /**
-     * Get Supervisor by identification
-     *
-     * @param string $serverName
-     *
-     * @return Supervisor|null
-     */
     public function getSupervisorByKey(string $serverName): ?Supervisor
     {
-        if (isset($this->supervisors[$serverName])) {
-            return $this->supervisors[$serverName];
+        return $this->supervisors[$serverName] ?? null;
+    }
+
+    /**
+     * A process is visible (listable and controllable) unless its name or its
+     * group is listed in the server's `hidden_processes`. Matching the group as
+     * well covers numprocs>1 programs (name `worker_00` in group `worker`) and
+     * event listeners (group == name).
+     */
+    public function isProcessVisible(string $serverName, string $group, string $name): bool
+    {
+        if (!isset($this->supervisors[$serverName])) {
+            return false;
         }
 
-        return null;
+        $hidden = $this->hiddenProcesses[$serverName] ?? [];
+
+        return !\in_array($name, $hidden, true) && !\in_array($group, $hidden, true);
+    }
+
+    /**
+     * @return list<ProcessInterface>
+     */
+    public function getVisibleProcesses(string $serverName): array
+    {
+        $supervisor = $this->getSupervisorByKey($serverName);
+        if ($supervisor === null) {
+            return [];
+        }
+
+        $visible = [];
+        foreach ($supervisor->getAllProcesses() as $process) {
+            $payload = $process->getPayload();
+            if ($this->isProcessVisible($serverName, (string) ($payload['group'] ?? ''), $process->getName())) {
+                $visible[] = $process;
+            }
+        }
+
+        return $visible;
+    }
+
+    public function getLogTailBytes(string $serverName): int
+    {
+        return $this->logTailBytes[$serverName] ?? self::DEFAULT_LOG_TAIL_BYTES;
     }
 }

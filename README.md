@@ -1,70 +1,130 @@
 # HelpPC Supervisor Bundle
 
-[![Build Status](https://gitlab.com/helppc/supervisor-bundle/badges/master/pipeline.svg)](https://gitlab.com/helppc/supervisor-bundle)
-[![License](https://poser.pugx.org/trikoder/oauth2-bundle/license)](https://packagist.org/packages/helppc/supervisor-bundle)
+[![CI](https://github.com/helppc/supervisor-bundle/actions/workflows/ci.yml/badge.svg)](https://github.com/helppc/supervisor-bundle/actions/workflows/ci.yml)
+[![License](https://poser.pugx.org/helppc/supervisor-bundle/license)](https://packagist.org/packages/helppc/supervisor-bundle)
 
-Symfony bundle which manage supervisor process. Bundle is implemented using the [supervisorphp/supervisor](https://github.com/supervisorphp/supervisor) library.
-
-## Status
-
-This package is currently in the active development.
-
+Symfony bundle for managing [Supervisor](http://supervisord.org/) processes over
+its XML-RPC API — list processes, start/stop/restart them and tail their logs
+from a small web UI. Implemented on top of the
+[supervisorphp/supervisor](https://github.com/supervisorphp/supervisor) library.
 
 ## Requirements
 
-* [PHP 7.4](http://php.net/releases/7_4_0.php) or greater
-* [Symfony 5.x](https://symfony.com/roadmap/5.0)
+* PHP 8.2 or greater
+* Symfony 6.4, 7.x or 8.x
+
+Upgrading from 1.x? See [UPGRADE-2.0.md](UPGRADE-2.0.md).
 
 ## Installation
 
-1. Require the bundle and a PSR 7/17 implementation with Composer:
+1. Require the bundle with Composer:
 
     ```sh
-    composer require helppc/supervisor-bundle nyholm/psr7
+    composer require helppc/supervisor-bundle
     ```
 
-    > **NOTE:** This bundle requires a PSR 7/17 implementation to operate. We recommend that you use [nyholm/psr7](https://github.com/Nyholm/psr7). Check out this [document](docs/psr-implementation-switching.md) if you wish to use a different implementation.
+    The bundle ships its own PSR-17/PSR-18 stack (`nyholm/psr7` +
+    `symfony/http-client`) — no extra wiring is needed.
 
-1. Create the bundle configuration file under `config/packages/helppc_supervisor.yaml`. Here is a reference configuration file:
-
-    ```yaml
-    supervisor:
-      default_environment: all
-      servers:
-        all:
-          localhost:
-            scheme: http
-            host: 127.0.0.1
-            port: 9006
-    ```
-
-1. Enable the bundle in `config/bundles.php` by adding it to the array:
+1. Enable the bundle in `config/bundles.php`:
 
     ```php
-    HelpPC\Bundle\SupervisorBundle\SupervisorBundle::class => ['all' => true]
+    HelpPC\Bundle\SupervisorBundle\SupervisorBundle::class => ['all' => true],
     ```
 
-1. Import the routes inside your `config/routes/helppc_supervisor.yaml` file:
+1. Create `config/packages/helppc_supervisor.yaml`. Full reference:
 
     ```yaml
-    supervisor:
-      resource: "@SupervisorBundle/Resources/config/routing.xml"
-      prefix:   /supervisor
+    helppc_supervisor:
+        default_environment: prod
+        servers:
+            prod:
+                localhost:
+                    scheme: http            # default
+                    host: 127.0.0.1         # required
+                    port: 9001              # default
+                    username: '%env(SUPERVISOR_RPC_USERNAME)%'  # optional — HTTP basic auth
+                    password: '%env(SUPERVISOR_RPC_PASSWORD)%'  # optional
+                    hidden_processes: []    # process/group names that must never
+                                            # be listed or controlled (see below)
+                    log_tail_bytes: 16384   # how much of a log tail to render
     ```
 
-**❮ NOTE ❯** It is recommended to control the access to the authorization endpoint
-so that only logged in users can approve authorization requests.
-You should review your `security.yml` file. Here is a sample configuration:
+1. Import the routes in `config/routes/helppc_supervisor.yaml`:
+
+    ```yaml
+    helppc_supervisor:
+        resource: '@SupervisorBundle/config/routes.php'
+        prefix: /supervisor
+    ```
+
+1. Restrict access — the bundle does no authorization by itself. All
+   state-changing routes are `POST`-only, but you still want an
+   `access_control` rule (or your own means) limiting who can reach the UI:
+
+    ```yaml
+    security:
+        access_control:
+            - { path: ^/supervisor, roles: ROLE_ADMIN }
+    ```
+
+## Supervisord configuration
+
+The bundle talks to supervisord's HTTP XML-RPC endpoint. Enable it in
+`supervisord.conf`, ideally bound to loopback and protected by credentials
+(supervisord expands real environment variables via `%(ENV_...)s`):
+
+```ini
+[inet_http_server]
+port=127.0.0.1:9001
+username=%(ENV_SUPERVISOR_RPC_USERNAME)s
+password=%(ENV_SUPERVISOR_RPC_PASSWORD)s
+
+[rpcinterface:supervisor]
+supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface
+```
+
+Note on timeouts: `stopProcess`/`restartProcess` wait for the process to stop,
+which can take up to the program's `stopwaitsecs`. Make sure your PHP HTTP
+client timeout (default 60 s with `symfony/http-client`) exceeds the largest
+`stopwaitsecs` you use.
+
+## Hidden processes
+
+`hidden_processes` is a per-server deny-list of process **names or group
+names**. A hidden process:
+
+* never appears in the process list, and
+* cannot be targeted at all — start/stop/restart/log routes return **404**
+  before any RPC call is made.
+
+Matching the group as well covers `numprocs > 1` programs (process `worker_00`
+in group `worker`) and event listeners (whose group equals their name). Typical
+use: hide the processes that keep the container itself alive:
 
 ```yaml
-security:
-    access_control:
-        - { path: ^/supervisor, roles: IS_AUTHENTICATED_REMEMBERED }
+hidden_processes: [php-fpm, nginx, fatal_exit]
 ```
+
+Anything you later add to `supervisord.conf` becomes manageable automatically —
+only processes that must stay untouchable need to be listed here.
+
+## Templates
+
+Every page renders inside the `@Supervisor/layout.html.twig` layout. To embed
+the UI into your application chrome, override that single file
+(`templates/bundles/SupervisorBundle/layout.html.twig`):
+
+```twig
+{% extends 'base.html.twig' %}
+{% block body %}{% block supervisor_content %}{% endblock %}{% endblock %}
+```
+
+Translations ship in English and Czech (domain `SupervisorBundle`).
 
 ## Reporting issues
 
-Use the [issue tracker](https://gitlab.com/helppc/supervisor-bundle/-/issues) to report any issues you might have.
+Use the [issue tracker](https://github.com/helppc/supervisor-bundle/issues) to report any issues you might have.
 
 ## License
 
